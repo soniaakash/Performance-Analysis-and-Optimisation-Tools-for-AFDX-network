@@ -27,7 +27,12 @@ SOURCES += main.cpp \
     NetworkCalculus/DRR/nc_drr_classic.cpp \
     NetworkCalculus/DRR/nc_drr_optimised.cpp \
     NetworkCalculus/DRR/nc_drr_quantumassignment.cpp \
-    NetworkCalculus/DRR/nc_drr_quantumassignmentimproved.cpp
+    NetworkCalculus/DRR/nc_drr_quantumassignmentimproved.cpp \
+    NetworkCalculus/SPQ/nc_spq.cpp \
+    NetworkCalculus/UnderBound/nc_underbound.cpp \
+    NetworkCalculus/FIFO/nc_fifo_offset.cpp \
+    NetworkCalculus/WRR/nc_wrr.cpp \
+    NetworkCalculus/WRR/nc_wrr_optimised.cpp
 
 HEADERS += \
     NetworkCalculus/networkcalculus.h \
@@ -42,4 +47,9 @@ HEADERS += \
     NetworkCalculus/DRR/nc_drr_classic.h \
     NetworkCalculus/DRR/nc_drr_optimised.h \
     NetworkCalculus/DRR/nc_drr_quantumassignment.h \
-    NetworkCalculus/DRR/nc_drr_quantumassignmentimproved.h
+    NetworkCalculus/DRR/nc_drr_quantumassignmentimproved.h \
+    NetworkCalculus/SPQ/nc_spq.h \
+    NetworkCalculus/UnderBound/nc_underbound.h \
+    NetworkCalculus/FIFO/nc_fifo_offset.h \
+    NetworkCalculus/WRR/nc_wrr.h \
+    NetworkCalculus/WRR/nc_wrr_optimised.h

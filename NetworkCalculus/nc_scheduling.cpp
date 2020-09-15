@@ -16,21 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ***************************************************************************/
 
-#include <QCoreApplication>
-#include <QCommandLineParser>
-#include "NetworkCalculus/networkcalculus.h"
+#include "nc_scheduling.h"
 
-int main(int argc, char *argv[])
+NC_Scheduling::NC_Scheduling()
 {
-    QCoreApplication a(argc, argv);
-
-    qStdOut() << "*** Performance Analysis and Optimisation Tools for AFDX network ***";
-
-    NetworkCalculus nc; nc.init(AFDX::AFDX_SOURCE::FILE, SCHEDULING::WRR, MODE::WCTT, OPTIONS::OPTIMISED);
-
-    qStdOut() << "Terminate! ";
-
-    return 0;//a.exec();
-
+    ncData = nullptr;
 }
-

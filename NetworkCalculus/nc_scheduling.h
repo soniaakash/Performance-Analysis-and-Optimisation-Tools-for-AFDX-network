@@ -16,21 +16,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ***************************************************************************/
 
-#include <QCoreApplication>
-#include <QCommandLineParser>
-#include "NetworkCalculus/networkcalculus.h"
+#ifndef NC_SCHEDULING_H
+#define NC_SCHEDULING_H
 
-int main(int argc, char *argv[])
+#include "AFDX/afdx.h"
+#include "NetworkCalculus/ncdata.h"
+
+// this is a generic NC scheduling class
+//      it defines the data variables for different schedulers
+class NC_Scheduling
 {
-    QCoreApplication a(argc, argv);
+public:
+    NC_Scheduling();
 
-    qStdOut() << "*** Performance Analysis and Optimisation Tools for AFDX network ***";
+protected:
+    NCData * ncData; // afdx config data (expanded) for NC computations
 
-    NetworkCalculus nc; nc.init(AFDX::AFDX_SOURCE::FILE, SCHEDULING::WRR, MODE::WCTT, OPTIONS::OPTIMISED);
+    QMultiMap<int, QPair<int,double> > flowID_pathNo_e2eDelays;  // results <flowID, <pathNo, e2eDelay>> : list of computed e2e delays per flow per path
+};
 
-    qStdOut() << "Terminate! ";
-
-    return 0;//a.exec();
-
-}
-
+#endif // NC_SCHEDULING_H
