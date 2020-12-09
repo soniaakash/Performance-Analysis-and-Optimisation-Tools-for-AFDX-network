@@ -29,3 +29,6 @@ I hope this project will be helpful to my fellow researchers!
 Disclaimer: This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation. See the License file for more information. This program was developed for research purpose only and is available to the communtity for free as an open source project, I take no liability for damages resulting from using the projects.
 
 Keywords : Network Calculus, AFDX, WCTT Analysis, QoS Tuning, DRR, WRR, SPQ, Real-Time Performance Analysis
+
+
+If you like this project, consider [buying me a coffe](https://www.buymeacoffee.com/asoni)
