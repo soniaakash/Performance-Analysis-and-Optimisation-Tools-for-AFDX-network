@@ -31,4 +31,4 @@ Disclaimer: This program is free software: you can redistribute it and/or modify
 Keywords : Network Calculus, AFDX, WCTT Analysis, QoS Tuning, DRR, WRR, SPQ, Real-Time Performance Analysis
 
 
-If you like this project, consider [buying me a coffe](https://www.buymeacoffee.com/asoni)
+If you like this project and if it was helpful in your research, please dont forget to cite.
