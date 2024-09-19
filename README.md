@@ -14,7 +14,7 @@ It is basically an implementation of Network Calculus approach in the following 
 2) Tuning of QoS based on: 
         DRR and WRR scheduling
 
-The code is written in C++ using the Qt library. The choice of Qt library is purely personal and the code can be easily modified to remove its Qt dependence.
+The code is written in C++ using the Qt library (5.12.12). The choice of Qt library is purely personal and the code can be easily modified to remove its Qt dependence.
 
 The project is divided into three main parts:
 1) AFDX/
