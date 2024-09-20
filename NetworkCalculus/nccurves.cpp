@@ -480,6 +480,54 @@ void ConcaveCurve::operator +=(const ConcaveCurve &cc2)
     }
 }
 
+
+// shift the arrival curve by x units horizontally
+void ConcaveCurve::hShiftCurve(double const &x) {
+
+    if(x == 0.0) return;
+
+    auto it = rayList.begin();
+    while(it != rayList.end()) { it->p.x += x; ++it; }  // shift the curve by x units.
+
+    // if curve was shifted left
+    // crop it to start at x = 0
+    it = rayList.begin();
+    while(it != rayList.end()) { // remove/crop the lines having x < 0
+        if(it->p.x < 0) {
+            if((it+1) != rayList.end() && (it+1)->p.x <= 0) {
+                it = rayList.erase(it); continue;
+            }
+            // compute y at x = 0
+            double y_t0 = it->p.y - (it->k * it->p.x); // (subtract because x is -ve) == add
+            double x_t0 = 0.0;
+
+            // Crop selected line to start at x= 0
+            it->p.x = x_t0;
+            it->p.y = y_t0;
+            break;
+        } else {
+            break;
+        }
+    }
+
+    // if curve was shifted right
+    // extend it to start at x = 0
+    it = rayList.begin();
+    if(it != rayList.end() && (it+1) != rayList.end() && it->p.x > 0 && it->p.y == 0.0 && !std::isfinite(it->k)) { // curve base was shifted to right
+        // compute y at x = 0
+        double y_t0 = (it+1)->p.y - ((it+1)->k * (it+1)->p.x);
+        double x_t0 = 0.0;
+
+        // Extend curve to start at x= 0
+        it->p.x = x_t0;
+        it->p.y = y_t0;
+    }
+
+    // recreate curve base
+    rayList.prepend(Line(Point(0.0,0.0),1.0/0.0));
+    makeContinuous(rayList);
+}
+
 // ***************** **************** ***************** //
 // ***************** **************** ***************** //
 // *****************    ConvexCurve   ***************** //
@@ -832,4 +880,261 @@ double maxHorizontalDistance_X0(const ConcaveCurve &arrivalCurve, const ConvexCu
     //     (5) hDistance_X0 = x_concave + max horizontal distance
     double hDistanceX0 = x_concave + hDistance;
     return hDistanceX0;
+}
+
+double maxVerticalDistance_nonLR(const ConcaveCurve &arrivalCurve, const ConvexCurve &serviceCurve, const int &flowID, const NODE_t &node, double &at_x) {
+    Line l_service, l_arrival;
+    return maxVerticalDistance_nonLR(arrivalCurve, serviceCurve, flowID, node, at_x, l_service, l_arrival);
+}
+double maxVerticalDistance_nonLR(const ConcaveCurve &arrivalCurve, const ConvexCurve &serviceCurve, const int &flowID, const NODE_t &node, double &at_x, Line &l_service){
+    Line l_arrival;
+    return maxVerticalDistance_nonLR(arrivalCurve, serviceCurve, flowID, node, at_x, l_service, l_arrival);
+}
+double maxVerticalDistance_nonLR(const ConcaveCurve &arrivalCurve, const ConvexCurve &serviceCurve, const int &flowID, const NODE_t &node, double &at_x, Line &l_service, Line &l_arrival)
+{
+    if(arrivalCurve.getRayList().empty()){
+        qStdOut() << "error computing vertical distance for flow " << flowID << " at " << NODE_t_toString(node);
+        throw std::runtime_error("empty arrival curves. unable to compute vertical distance! :: maxVerticalDistance_nonLR");
+    } else if(serviceCurve.getRayList().empty()){
+        qStdOut() << "error computing vertical distance for flow " << flowID << " at " << NODE_t_toString(node);
+        throw std::runtime_error("empty service curves. unable to compute vertical distance! :: maxVerticalDistance_nonLR");
+    }
+
+    // validation
+    foreach (Line const&l, arrivalCurve.getRayList()) {
+        validateRay(l);
+    }
+    // validation
+    {
+        // ******************************
+        // validate convexity here
+        // ******************************
+    }
+
+    // maximum vertical distance between a concave (arrival) and a convex (service) curve
+    // corresponds to the unique points on the two curves where they start to converge towards each other.
+    // in piecewise linear curves it belongs to the "pieces" (line) where l_concave.k < l_convex.k
+
+    // case I : initial slope of Convex Curve is greater than that of Concave Curve
+    //       vertical distance = 0
+    if (arrivalCurve.getRayList().first().k <= serviceCurve.getRayList().first().k) {
+        qStdOut() << "unusual case : slope(arrival_curve) <= slope(service_curve) at t = 0";
+        at_x = 0.0;
+        l_service = Line();
+        l_arrival = l_service;
+        return 0.0;
+    }
+
+    // case II : no convergence. final slope of Concave Curve is greater than that of Convex Curve
+    //       vertical distance = +inf
+    if (arrivalCurve.getRayList().last().k >= serviceCurve.getRayList().last().k) {
+        qStdOut() << "no convergence : slope(arrival_curve)(=" << arrivalCurve.getRayList().last().k << ") >= slope(service_curve)(=" << serviceCurve.getRayList().last().k << ") at t = +inf";
+        at_x = 1.0/0.0;
+        l_service = Line();
+        l_arrival = l_service;
+        return 1.0/0.0;
+    }
+
+    // case III : valid convergence.
+    // the vertical distance is computed as
+    //    - Starting at x = 0, compare the slope of the two curves at all the points on x-axis
+    //      Note : (serach space can be limited to the x-values where the slope is changed for atleast one curve)
+    //    - stop when slope of Concave Curve < slope of Convex Curve
+    //    - maximum vertical disctance can be found at this point
+
+
+    double x = 0.0;
+    auto ccIterator = arrivalCurve.getRayList().cbegin(), ccEnd = arrivalCurve.getRayList().cend();
+    auto cvIterator = serviceCurve.getRayList().cbegin(), cvEnd = serviceCurve.getRayList().cend();
+
+    while(ccIterator->k > cvIterator->k) { // Find the convergence point
+
+        // Get next x
+        double cvX = -1, ccX = -1;
+
+        if(((cvIterator+1) == cvEnd) && ((ccIterator+1) == ccEnd)) { throw std::runtime_error(" Something went wrong :: maxVerticalDistance_nonLR"); }
+
+        if((cvIterator+1) == cvEnd) cvX = 1.0/0.0;
+        else cvX = (cvIterator+1)->p.x;
+
+        if((ccIterator+1) == ccEnd) ccX = 1.0/0.0;
+        else ccX = (ccIterator+1)->p.x;
+
+        double xDiff = trimDouble(cvX - ccX);
+
+        if(xDiff > 0.0 || approxEquality(xDiff, 0.0)) { ++ccIterator; x = ccX; } // CV same(or)right to CC at next line
+        if(xDiff < 0.0 || approxEquality(xDiff, 0.0)) { ++cvIterator; x = cvX; } // CV same(or)left to CC  at next line
+    }
+
+    double yUp   = (ccIterator->p.y + ccIterator->k * (x - ccIterator->p.x));
+    double yBottom = (cvIterator->p.y + cvIterator->k * (x - cvIterator->p.x));
+
+    double maxvDistance = trimDouble(yUp - yBottom);
+    maxvDistance *= (maxvDistance < 0.0)?-1.0:1.0;
+
+    at_x = x;
+    l_service = *cvIterator;
+    l_arrival = *ccIterator;
+    return maxvDistance;
+
+}
+
+// Output bound a flow traversing an output port (i.e. worst-case backlog)
+// deconvolution between overall arrival curve and service curve (only convex service curve : it may or may not be Latency-Rate) (i.e. worst-case output traffic)
+ConcaveCurve outputBound_nonLR(const ConcaveCurve &arrivalCurve, const ConvexCurve &serviceCurve, const int &flowID, const NODE_t &node, double &at_x)
+{
+    if(arrivalCurve.getRayList().empty()){
+        qStdOut() << "error computing outputBound for flow " << flowID << " at " << NODE_t_toString(node);
+        throw std::runtime_error("empty arrival curves. unable to compute outputBound!");
+    } else if(serviceCurve.getRayList().empty()){
+        qStdOut() << "error computing outputBound for flow " << flowID << " at " << NODE_t_toString(node);
+        throw std::runtime_error("empty service curves. unable to compute outputBound!");
+    }
+
+    // validation
+    foreach (Line const&l, arrivalCurve.getRayList()) {
+        if (!std::isfinite(l.p.x) || l.p.x < 0.0) { qStdOut() << "x = " << l.p.x; throw std::runtime_error("invalid x :: outputBound_nonLR()");} // Causal
+        if (l.p.y < 0.0) { qStdOut() << "y = " << l.p.y; throw std::runtime_error("invalid y :: outputBound_nonLR()");} // Lowerbounded by x axis
+        if (!std::isgreaterequal(l.k, 0.0)) { qStdOut() << "k = " << l.k; throw std::runtime_error("invalid k :: outputBound_nonLR()");} // non-decreasing
+    }
+    // validation
+    {
+        RayList const& rL = serviceCurve.getRayList();
+        if(!rL.empty()) {
+
+            // validate causality
+            if(!(rL.first().p == Point(0.0,0.0))) throw std::runtime_error("service curve is not causal :: outputBound_nonLR() ");
+
+            // verify convexity
+            // (0,0):0 -> (latency,0):rate -> ...
+            for (int i = 1; i < rL.size(); ++i) {
+                if(!std::isgreaterequal(rL.at(i).k , rL.at(i-1).k ) && !std::isgreaterequal(rL.at(i).p.x , rL.at(i-1).p.x ))
+                        throw std::runtime_error("service curve is not convex :: outputBound_nonLR() ");
+            }
+            // verify LR
+            //    if(rL.size() > 1 && !(rL.first().k == 0.0)) {
+            //        // printRayList(rL);
+            //        throw std::runtime_error("service curve is not atleast a latency-rate server :: outputBound_nonLR() ");
+            //        // qStdOut() << "ignoring :: service curve is not atleast a latency-rate server :: outputBound_nonLR()";
+            //    }
+
+        } else throw std::runtime_error("invalid serviceCurve raylist :: ConvexCurve::outputBound_nonLR() ");
+    }
+
+    // deconvoltion of a concave (arrival) and a convex (service) curve is obtained by
+    // (1) shifting the arrivalCuve by the service latency (theta') to the left.
+    // (2) replacing the resulting arrival curve on [0, (t0-theta')] by a set of linear functions
+    //     with slopes equal to the service rate (rho' > rho'_prev > ... )
+    //     and an intial burst equal to the maximum backlog (maxBklg = maxVerticalDistance_nonLR(alpha,beta)).
+    //
+    //   where, t0 is the instant t where arrival and service curve begin to converge.
+    //          theta' is the initial x-value of the line corresponding to the convergence on the service curve
+    //          rho' is the slope of the line corresponding to the convergence on the service curve
+    //   NOTE  : step (2) can be ignored when (t0-theta) <= 0, i.e t0 <= theta.
+    //           where theta is the latency and in this case theta' = theta
+    //
+    // This means the outputBound (alpha_star) is
+    //               | alpha(t + theta) ,  IF t_0 <= theta
+    // alpha_star =  | alpha_prime      ,  otherwise
+    //
+    // where,
+    //               | maxBklg + rho' t  , FOR t < (t_0 - theta')
+    // alpha_prime = | alpha(t + theta') , otherwise
+
+
+    // case I : initial slope of Convex Curve is greater than that of Concave Curve
+    //       vertical distance = 0
+    //       output bound = input arrival curve
+    if (arrivalCurve.getRayList().first().k <= serviceCurve.getRayList().first().k) {
+        qStdOut() << "unusual case : slope(arrival_curve) <= slope(service_curve) at t = 0";
+        at_x = 0.0;
+        return arrivalCurve;
+    }
+
+    // case II : no convergence. final slope of Concave Curve is greater than that of Convex Curve
+    //       vertical distance = +inf
+    //       t0 (point of convergence) at +inf
+    if (arrivalCurve.getRayList().last().k >= serviceCurve.getRayList().last().k) {
+        qStdOut() << "no convergence : slope(arrival_curve)(=" << arrivalCurve.getRayList().last().k << ") >= slope(service_curve)(=" << serviceCurve.getRayList().last().k << ") at t = +inf";
+        // qStdOut() << "error computing output bound for flow " << flowID << " at " << NODE_t_toString(node);
+        // throw std::runtime_error("no convergence. unable to compute output bound!");
+        qStdOut() << "Assuming infinte output bound ! " << flowID << " at " << NODE_t_toString(node);
+        at_x = 1.0/0.0;
+        return ConcaveCurve();
+    }
+
+    // case III : valid convergence.
+    // (1) shifting the arrivalCuve by the service latency (theta') to the left.
+    // (2) replacing the resulting arrival curve on [0, (t0-theta')] by a linear function
+    //   NOTE  : step (2) can be ignored when (t0-theta) <= 0, i.e t0 <= theta.
+    //
+    // this computation is limited to a convex and causal service curves.
+    //
+
+    Line l_service;
+    double maxBklg = maxVerticalDistance_nonLR(arrivalCurve, serviceCurve, flowID, node, at_x, l_service);
+    double t0 = at_x;
+
+    // (1) shifting the arrivalCuve by the service latency (theta') to the left.
+    ConcaveCurve alpha_star = arrivalCurve;
+
+    //    }
+    //    alpha_star.hShiftCurve(-theta_prime.first()); // -ve for left shift
+
+    RayList const&rl_service = serviceCurve.getRayList();
+    if(l_service == Line() || (rl_service.indexOf(l_service) == -1)) { throw std::runtime_error("Invalid service curve convergence (l_service). unable to compute outputBound!"); }
+    auto it_service = rl_service.cbegin() + rl_service.indexOf(l_service);
+    {
+        double theta = it_service->p.x;
+        alpha_star.hShiftCurve(-theta);
+    }
+    //    qStdOut() << "After shift "; printRayList(alpha_star.getRayList());
+
+    // (2) replacing the resulting arrival curve on [0, (t0-theta')] by
+    //     a linear function with rate rho'
+    //     and an intial burst of maxBklg, when t0 > Theta.
+
+    if(t0 > it_service->p.x && !approxEquality(t0, it_service->p.x)) {
+
+
+        RayList rl_arrival = alpha_star.getRayList();
+        RayList::iterator  it_arrival = rl_arrival.begin() + 1;
+        //        if(it != rl_cc.end()) { it->p.y = maxBklg; it->k = rho_prime.first(); } // replace first piece by (0, maxBklg):rho'
+
+        if(it_arrival != rl_arrival.end()) { it_arrival->p.y = maxBklg; it_arrival->k = it_service->k; } // replace first piece by (0, maxBklg):rho'
+
+        for(int i = 2; i < rl_arrival.size(); ++i) { // remove all the pieces in the range (0, (t0-theta'))
+            // if((rl_arrival.begin()+i)->p.x > (t0 - theta_prime.first()) || approxEquality((rl_arrival.begin()+i)->p.x, (t0 - theta_prime.first())) ) {
+            if((rl_arrival.begin()+i)->p.x > trimDouble(t0 - it_service->p.x) || approxEquality((rl_arrival.begin()+i)->p.x, trimDouble(t0 - it_service->p.x)) ) {
+                break;
+            }
+            rl_arrival.removeAt(i); --i;
+        }
+        it_arrival = rl_arrival.begin() + 1;
+
+        //        qStdOut() << "After cleanup and bklg"; printRayList(rl_arrival);
+
+        while((it_service != (rl_service.begin()-1)) && (it_service->p.y > 0.0)) {
+        //            qStdOut() << "iterator arrival at " << it_arrival->p.x << "," << it_arrival->p.y << "," << it_arrival->k;
+            it_arrival->k = it_service->k;
+            double x = trimDouble(t0 - it_service->p.x);
+            double y = it_arrival->p.y + trimDouble(it_arrival->k * trimDouble(x - it_arrival->p.x)) ;
+            double k = 0.0; // will be updated either in the next iteration or at the end of the loop
+            it_arrival = rl_arrival.insert((it_arrival+1), Line(x,y,k));
+            --it_service;
+
+        //            qStdOut() << "After insertion "; printRayList(rl_arrival);
+
+        }
+        if(it_service != (rl_service.begin()-1)) {it_arrival->k = it_service->k;}
+        if(++it_arrival != rl_arrival.end()) { it_arrival->p.x = (it_arrival-1)->p.x + trimDouble(trimDouble(it_arrival->p.y - (it_arrival-1)->p.y)/(it_arrival-1)->k);} // Update the x-value at the original convergence point
+
+        //        qStdOut() << "After correction "; printRayList(rl_arrival);
+
+        makeConcave(rl_arrival);
+        makeContinuous(rl_arrival); // connect (0.0, mkBklg) to ((t0 - theta), y)
+        alpha_star.setRayList(rl_arrival);
+    }
+
+    return alpha_star;
 }
