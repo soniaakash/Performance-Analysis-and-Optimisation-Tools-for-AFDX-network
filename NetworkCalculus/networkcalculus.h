@@ -54,6 +54,7 @@
 //              - https://ieeexplore.ieee.org/document/6376315 (DRR with network calculus)
 //              - https://ieeexplore.ieee.org/document/1043123 (On the latency bound of DRR)
 //              - https://ieeexplore.ieee.org/document/8603222 (Optimizing Network Calculus for DRR)
+//              - https://ieeexplore.ieee.org/abstract/document/9843526 (Deficit Round-Robin: Network Calculus based Worst-Case Traversal Time Analysis Revisited)
 //              - https://ieeexplore.ieee.org/abstract/document/8756011 (Improved Delay Bound for a Service Curve Element)
 //              - https://ieeexplore.ieee.org/abstract/document/8502523 (Integrating Offset in worst-case delay analysis for DRR)
 //              - https://dl.acm.org/doi/10.1145/3356401.3356421 (Quantum assignment for QoS-aware AFDX network with deficit round robin)
