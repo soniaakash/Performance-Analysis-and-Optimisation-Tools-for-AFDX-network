@@ -481,13 +481,33 @@ double NC_DRR_Optimised::computeOptimisedNodeDelay(const NCData::NCFlow &refFlow
                 NCData::NCFlow const &flow = ncData->selectNCFlow_ref(fID_Ci); // fetch flow with selected fID
                 ConcaveCurve alpha_Ci = computeOverallArrivalCurve(flow, node); // fetch overall arrival curve
 
-                // compute L_Ci = alpha_Ci(D_servicepoint)
-                RayList rl_Ci = alpha_Ci.getRayList();
-                RayList::iterator it = rl_Ci.begin(); RayList::iterator itEnd = rl_Ci.end();
-                for(; it != itEnd; ++it) { // look for the line corresponding to D_servicepoint
-                    if(it->p.x > D_servicepoint) break;
-                } --it;
-                L_Ci = trimDouble(it->k * (D_servicepoint - it->p.x)) + it->p.y; // fetch y-value at x = D_servicepoint
+                // L_Ci calculation proposed in RTSS2018 can be optimistic in some corner cases ()
+                //    { // Obsolete
+                //        // compute L_Ci = alpha_Ci(D_servicepoint)
+                //        RayList rl_Ci = alpha_Ci.getRayList();
+                //        RayList::iterator it = rl_Ci.begin(); RayList::iterator itEnd = rl_Ci.end();
+                //        for(; it != itEnd; ++it) { // look for the line corresponding to D_servicepoint
+                //            if(it->p.x > D_servicepoint) break;
+                //        } --it;
+                //        L_Ci = trimDouble(it->k * (D_servicepoint - it->p.x)) + it->p.y; // fetch y-value at x = D_servicepoint
+                //    }
+
+                // L_Ci correction introduced in LCN 2022 (https://ieeexplore.ieee.org/abstract/document/9843526) Deficit Round-Robin: Network Calculus based Worst-Case Traversal Time Analysis Revisited
+                {
+                    ConvexCurve beta_Ci = computeServiceCurve(flow, node);
+                    // alpha_Ci
+                    double at_x = 0.0;
+                    ConcaveCurve alpha_Ci_star = outputBound_nonLR(alpha_Ci, beta_Ci, refFlow.getFlowID(), node, at_x);
+
+                    // compute L_Ci = alpha_Ci_star(D_servicepoint)
+                    RayList rl_Ci = alpha_Ci_star.getRayList();
+                    RayList::iterator it = rl_Ci.begin(); RayList::iterator itEnd = rl_Ci.end();
+                    for(; it != itEnd; ++it) { // look for the line corresponding to D_servicepoint
+                        if(it->p.x > D_servicepoint) break;
+                    } --it;
+                    L_Ci = trimDouble(it->k * (D_servicepoint - it->p.x)) + it->p.y; // fetch y-value at x = D_servicepoint
+                }
+
             }
 
             //       (3) compute over-estimated load of competing class Ci
