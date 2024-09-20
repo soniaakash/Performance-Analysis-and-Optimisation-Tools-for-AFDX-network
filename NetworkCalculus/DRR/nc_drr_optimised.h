@@ -27,6 +27,7 @@
 //
 // the worst-case delay computation in this class
 //      is based on the Network Calculus approach published in https://ieeexplore.ieee.org/document/8603222 (Optimizing Network Calculus for DRR)
+//      Additional [Corrections] are introduced from the revisited approach published in https://ieeexplore.ieee.org/abstract/document/9843526 (Deficit Round-Robin: Network Calculus based Worst-Case Traversal Time Analysis Revisited)
 //      with an assumption of equal quantum distribution at each switch output port.
 // this approach takes into account the amount of traffic from each class flows
 // and optimise the delay computation by
