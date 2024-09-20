@@ -199,6 +199,9 @@ public:
     // a based curve added to any curve results in a non-causal curve
     bool isBaseCurve() { return (rayList.size() == 1) && (rayList.first() == Line(Point(0.0,0.0),1.0/0.0)); }
 
+    // shift the arrival curve by x units horizontally
+    void hShiftCurve(double const &x);
+
 private:
     RayList rayList; // concave curve is defined as a continuous sequence of "lines" called "RayList"
 
@@ -285,5 +288,18 @@ double maxHorizontalDistance_nonLR(ConcaveCurve const &arrivalCurve, ConvexCurve
 //          is limited to a latency-rate server.
 double maxHorizontalDistance_X0(ConcaveCurve const &arrivalCurve, ConvexCurve const &serviceCurve, int const &flowID, NODE_t const &node);
 
+// maximum vertical distance between overall arrival curve and service curve (i.e. worst-case backlog)
+//       the computation of max vertical distance in this function
+//       is applicable to NON latency-rate server as welll.
+double maxVerticalDistance_nonLR(ConcaveCurve const&arrivalCurve, ConvexCurve const &serviceCurve, int const &flowID, NODE_t const &node, double &at_x);
+double maxVerticalDistance_nonLR(ConcaveCurve const&arrivalCurve, ConvexCurve const &serviceCurve, int const &flowID, NODE_t const &node, double &at_x, Line &l_service);
+double maxVerticalDistance_nonLR(ConcaveCurve const&arrivalCurve, ConvexCurve const &serviceCurve, int const &flowID, NODE_t const &node, double &at_x, Line &l_service, Line &l_arrival);
+
+
+// Output bound a flow traversing an output port (i.e. worst-case traffic leaving the port)
+//       the computation of a deconvolution between the overall arrival curve and the service curve in this function
+//       is applicable to NON latency-rate server as welll.
+//       the variable 'at_x' holds the value of t where maximum backlog is found
+ConcaveCurve outputBound_nonLR(ConcaveCurve const &arrivalCurve, ConvexCurve const &serviceCurve, int const &flowID, NODE_t const &node, double &at_x);
 
 #endif // NCCURVES_H
